@@ -87,8 +87,8 @@ def scrape_season(year):
         if c.startswith("Corner") or c.startswith("Outcomes"):
             drop_types.append(c)
     passing_types = passing_types.drop(drop_types, axis=1)
-    passing_types = passing_types.drop(['Att', 'Pass TypesDead', 'Pass TypesFK', 'Pass TypesTB', 'Pass TypesCK',
-                                        "Pass TypesTI"], axis=1)
+    passing_types = passing_types.drop(['Att', 'Pass TypesDead', 'Pass TypesFK', 'Pass TypesTB', 'Pass TypesTI',
+                                        'Pass TypesCK', "Pass TypesTI"], axis=1)
     passing_types = passing_types.loc[passing_types["Player"] != "Player"]
 
     # shot creating actions statistics
@@ -113,7 +113,7 @@ def scrape_season(year):
             defense = rename_lower_index(defense, i)
     defense.columns = defense.columns.droplevel()
     defense = defense.drop(drop_all, axis=1)
-    defense = defense.drop(['Vs DribblesTkl', 'Vs DribblesPast', 'Tkl+Int', 'Err'], axis=1)
+    defense = defense.drop(['ChallengesTkl', 'ChallengesLost', 'Tkl+Int', 'Err'], axis=1)
     defense = defense.loc[defense["Player"] != "Player"]
 
     # possession statistics
@@ -123,7 +123,7 @@ def scrape_season(year):
             possession = rename_lower_index(possession, i)
     possession.columns = possession.columns.droplevel()
     possession = possession.drop(drop_all, axis=1)
-    possession = possession.drop(['TouchesLive', 'DribblesSucc', 'DribblesMis'], axis=1)
+    possession = possession.drop(['TouchesLive', 'Take-OnsSucc', 'Take-OnsTkld', 'CarriesMis'], axis=1)
     possession = possession.loc[possession["Player"] != "Player"]
 
     # miscellaneous statistics
@@ -211,7 +211,7 @@ def alter_columns_per_x(df):
     df = df.loc[mask_remove_gk_and_low_minutes]
 
     # create additional metrics
-    df["Def_Actions"] = df["TacklesTkl"] + df["Vs DribblesAtt"] + df["BlocksBlocks"] + df["Int"] + df["Clr"]
+    df["Def_Actions"] = df["TacklesTkl"] + df["ChallengesAtt"] + df["BlocksBlocks"] + df["Int"] + df["Clr"]
     df["Team_Poss"] = df["Team_Poss"] / 100
     df["Opp_Poss"] = 1 - df["Team_Poss"]
 
@@ -225,8 +225,8 @@ def alter_columns_per_x(df):
     df['Dist'].mask(df['Dist'] == 0, dist_median, inplace=True)
 
     # converting pass statistics to per pass or per completed pass
+    df["TotalPrgDist"] = df["TotalPrgDist"] / df["TotalTotDist"]
     df["TotalTotDist"] = df["TotalTotDist"] / df["TotalCmp"]
-    df["TotalPrgDist"] = df["TotalPrgDist"] / df["TotalCmp"]
     df["ShortAtt"] = df["ShortAtt"] / df["TotalAtt"]
     df["MediumAtt"] = df["MediumAtt"] / df["TotalAtt"]
     df["LongAtt"] = df["LongAtt"] / df["TotalAtt"]
@@ -241,7 +241,7 @@ def alter_columns_per_x(df):
     df["PPA_p90a"] = df["PPA"] / (df["90s"] * df["Team_Poss"])
     df["PPA"] = df["PPA"] / df["TotalCmp"]
     df["CrsPA"] = df["CrsPA"] / df["Pass TypesCrs"]
-    df["Prog"] = df["Prog"] / df["TotalCmp"]
+    df["PrgP"] = df["PrgP"] / df["TotalCmp"]
     df["Pass TypesSw"] = df["Pass TypesSw"] / df["TotalAtt"]
     df["Pass TypesCrs"] = df["Pass TypesCrs"] / df["TotalAtt"]
 
@@ -250,24 +250,24 @@ def alter_columns_per_x(df):
     df = df.drop(["TotalCmp"], axis=1)
     df.rename(
         columns={"TotalAtt": "Pass_Att_pTouch", "TotalCmp%": "Pass_Cmp%", "TotalTotDist": "Pass_Total_Dist_pCPass",
-                 "TotalPrgDist": "Pass_Prg_Dist_pCPass", "ShortAtt": "Pass_Short_Att_pPass",
+                 "TotalPrgDist": "Pass_Prg_Dist%", "ShortAtt": "Pass_Short_Att_pPass",
                  "ShortCmp%": "Pass_Short_Cmp%", "MediumAtt": "Pass_Medium_Att_pPass",
                  "MediumCmp%": "Pass_Medium_Cmp%", "LongAtt": "Pass_Long_Att_pPass", "LongCmp%": "Pass_Long_Cmp%",
                  "xAG": "xAG_pKP", "xA": "xA_pCPass", "KP": "KP_pCPass", "1/3": "Pass_Att3rd_pCPass",
                  "PPA": "PPA_pCPass",
-                 "CrsPA": "Cmp_Crs_PA_pCrs", "Prog": "Prog_Pass_pPass", "Pass TypesSw": "Switch_pPass",
+                 "CrsPA": "Cmp_Crs_PA_pCrs", "PrgP": "Prog_Pass_pCPass", "Pass TypesSw": "Switch_pPass",
                  "Pass TypesCrs": "Crs_pPass"}, inplace=True)
 
     # converting sca statistics to per relevant action
     df["SCA_LivePass_p90a"] = df["SCA TypesPassLive"] / (df["90s"] * df["Team_Poss"])
     df["SCA TypesPassLive"] = df["SCA TypesPassLive"] / df["Pass TypesLive"]
-    df["SCA_Drib_p90a"] = df["SCA TypesDrib"] / (df["90s"] * df["Team_Poss"])
-    df["SCA TypesDrib"] = df["SCA TypesDrib"] / df["DribblesAtt"]
+    df["SCA_TO_p90a"] = df["SCA TypesTO"] / (df["90s"] * df["Team_Poss"])
+    df["SCA TypesTO"] = df["SCA TypesTO"] / df["Take-OnsAtt"]
     df["SCA_Def_p90a"] = df["SCA TypesDef"] / (df["90s"] * df["Team_Poss"])
     df["SCA TypesDef"] = df["SCA TypesDef"] / df["Def_Actions"]
 
     df = df.drop(["Pass TypesLive"], axis=1)
-    df.rename(columns={"SCA TypesPassLive": "SCA_LivePass_pPass", "SCA TypesDrib": "SCA_Drib_pDrib",
+    df.rename(columns={"SCA TypesPassLive": "SCA_LivePass_pPass", "SCA TypesTO": "SCA_TO_pTO",
                        "SCA TypesDef": "SCA_Def_pDefAct"}, inplace=True)
 
     # converting defensive statistics to per defensive actions
@@ -275,7 +275,7 @@ def alter_columns_per_x(df):
     df["TacklesDef 3rd"] = df["TacklesDef 3rd"] / df["TacklesTkl"]
     df["TacklesMid 3rd"] = df["TacklesMid 3rd"] / df["TacklesTkl"]
     df["TacklesAtt 3rd"] = df["TacklesAtt 3rd"] / df["TacklesTkl"]
-    df["Vs DribblesAtt"] = df["Vs DribblesAtt"] / df["Def_Actions"]
+    df["ChallengesAtt"] = df["ChallengesAtt"] / df["Def_Actions"]
     df["BlocksSh"] = df["BlocksSh"] / df["BlocksBlocks"]
     df["BlocksPass"] = df["BlocksPass"] / df["BlocksBlocks"]
     df["Blocks_p90a"] = df["BlocksBlocks"] / (df["90s"] * df["Opp_Poss"])
@@ -287,8 +287,8 @@ def alter_columns_per_x(df):
 
     df.rename(
         columns={"TacklesTklW": "TklW%", "TacklesDef 3rd": "Tkl_Def_3rd_pTkl", "TacklesMid 3rd": "Tkl_Mid_3rd_pTkl",
-                 "TacklesAtt 3rd": "Tkl_Att_3rd_pTkl", "Vs DribblesAtt": "Tkl_vsDrib_pDefAct",
-                 "Vs DribblesTkl%": "Tkl_vsDrib%", "BlocksSh": "BlocksSh_pBlock", "BlocksPass": "BlocksPass_pBlock",
+                 "TacklesAtt 3rd": "Tkl_Att_3rd_pTkl", "ChallengesAtt": "Tkl_vsDrib_pDefAct",
+                 "ChallengesTkl%": "Tkl_vsDrib%", "BlocksSh": "BlocksSh_pBlock", "BlocksPass": "BlocksPass_pBlock",
                  "BlocksBlocks": "Blocks_pDefAct", "Int": "Int_pDefAct", "Clr": "Clr_pDefAct"}, inplace=True)
 
     # converting possession statistics to per touch
@@ -297,16 +297,25 @@ def alter_columns_per_x(df):
     df["TouchesMid 3rd"] = df["TouchesMid 3rd"] / df["Touches"]
     df["TouchesAtt 3rd"] = df["TouchesAtt 3rd"] / df["Touches"]
     df["TouchesAtt Pen"] = df["TouchesAtt Pen"] / df["Touches"]
-    df["DribblesAtt"] = df["DribblesAtt"] / df["Touches"]
-    df["DribblesDis"] = df["DribblesDis"] / df["Touches"]
-    df["ReceivingProg"] = df["ReceivingProg"] / df["ReceivingRec"]
+    df["Take-OnsAtt"] = df["Take-OnsAtt"] / df["Touches"]
+    df["CarriesPrgDist"] = df["CarriesPrgDist"] / df["CarriesTotDist"]
+    df["CarriesTotDist"] = df["CarriesTotDist"] / df["Carries"]
+    df["CarriesPrgC"] = df["CarriesPrgC"] / df["Carries"]
+    df["CarriesDis"] = df["CarriesDis"] / df["Carries"]
+    df["Carries1/3"] = df["Carries1/3"] / df["Carries"]
+    df["CarriesCPA"] = df["CarriesCPA"] / df["Carries"]
+    df["CarriesCarries"] = df["CarriesCarries"] / df["Touches"]
+    df["ReceivingPrgR"] = df["ReceivingPrgR"] / df["ReceivingRec"]
     df["ReceivingRec"] = df["ReceivingRec"] / (df["90s"] * df["Team_Poss"])
 
     df.rename(columns={"TouchesDef Pen": "Touches_Def_Pen_pTouch", "TouchesDef 3rd": "Touches_Def_3rd_pTouch",
                        "TouchesMid 3rd": "Touches_Mid_3rd_pTouch", "TouchesAtt 3rd": "Touches_Att_3rd_pTouch",
-                       "TouchesAtt Pen": "Touches_Att_Pen_pTouch", "DribblesAtt": "Dribbles_Att_pTouch",
-                       "DribblesDis": "Dispossessed_pTouch", "ReceivingProg": "Prog_Pass_Rec_pRec",
-                       "ReceivingRec": "Pass_Rec_p90a"}, inplace=True)
+                       "TouchesAtt Pen": "Touches_Att_Pen_pTouch", "Take-OnsAtt": "Take-Ons_Att_pTouch",
+                       "Take-OnsSucc%": "Take-Ons_Succ%", "Take-OnsTkld%": "Take-Ons_Tkld%",
+                       "CarriesPrgDist": "Carries_Prg_Dist%", "CarriesTotDist": "Carries_Total_Dist_pCar",
+                       "CarriesPrgC":"Carries_Prg_pCar", "Carries1/3":"Carries_Att3rd_pCar", "CarriesCPA":"CPA_pCar",
+                       "CarriesDis": "Dispossessed_pCar", "CarriesCarries": "Carries_pTouch",
+                       "ReceivingPrgR": "Prog_Pass_Rec_pRec", "ReceivingRec": "Pass_Rec_p90a"}, inplace=True)
 
     # converting misc and aerial statistics to per 90 (adjusted)
     df["Fls_pDefAct"] = df["Fls"] / df["Def_Actions"]
@@ -439,6 +448,7 @@ def splitting_and_weighting(df, weights):
 
     player_quality_df = df[columns_dict.get('player_quality')]
     player_quality_df.loc[:, "Fls_p90a"] = player_quality_df.loc[:, "Fls_p90a"] * -1
+    player_quality_df.loc[:, "Take-Ons_Tkld%"] = player_quality_df.loc[:, "Take-Ons_Tkld%"] * -1
 
     df = df[columns_dict.get('player_type')]
     df["Fls_pDefAct"] = df["Fls_pDefAct"] * -1
@@ -451,8 +461,10 @@ def splitting_and_weighting(df, weights):
         df[column] = df[column] * weights["Pass_Att_pTouch"]
     for column in columns_dict.get('defense'):
         df[column] = df[column] * weights["Def_Actions_p90a"]
-    df["SCA_Drib_pDrib"] = df["SCA_Drib_pDrib"] * weights["Dribbles_Att_pTouch"]
-    for column in columns_dict.get('carrying') + ["Sh_pT", "Pass_Att_pTouch", "Aerial Duels_p90"]:
+    df["SCA_TO_pTO"] = df["SCA_TO_pTO"] * weights["Take-Ons_Att_pTouch"]
+    for column in columns_dict.get('carrying'):
+        df[column] = df[column] * weights["Carries_pTouch"]
+    for column in ["Sh_pT", "Pass_Att_pTouch", "Take-Ons_Att_pTouch", "Carries_pTouch", "Aerial Duels_p90"]:
         df[column] = df[column] * weights["Touches_p90a"]
 
     return df, player_quality_df
@@ -512,11 +524,11 @@ def calc_quality_for_type(centroids, df):
                               centroids.loc[:, "Pass_Medium_Att_pPass"], centroids.loc[:, "Pass_Long_Att_pPass"]] +
                              [centroids.loc[:, "Pass_Att_pTouch"]] * 5 +
                              [centroids.loc[:, "Crs_pPass"], centroids.loc[:, "Pass_Att_pTouch"],
-                              centroids.loc[:, "Dribbles_Att_pTouch"], centroids.loc[:, "Tackles_pDefAct"],
+                              centroids.loc[:, "Take-Ons_Att_pTouch"], centroids.loc[:, "Tackles_pDefAct"],
                               centroids.loc[:, "Tackles_pDefAct"], centroids.loc[:, "Tkl_vsDrib_pDefAct"],
                               centroids.loc[:, "Blocks_pDefAct"], centroids.loc[:, "Int_pDefAct"],
-                              centroids.loc[:, "Clr_pDefAct"], centroids.loc[:, "Dribbles_Att_pTouch"],
-                              centroids.loc[:, "Pass_Rec_p90a"], centroids.loc[:, "Fls_pDefAct"],
+                              centroids.loc[:, "Clr_pDefAct"]] + centroids.loc[:, "Take-Ons_Att_pTouch"] * 2 +
+                             [centroids.loc[:, "Pass_Rec_p90a"], centroids.loc[:, "Fls_pDefAct"],
                               centroids.loc[:, "Fld_pTouch"], centroids.loc[:, "Recov_p90"],
                               centroids.loc[:, "Aerial Duels_p90"]])
     cent_edit = cent_edit.T
@@ -547,11 +559,11 @@ def calc_quality_for_player(type, df):
                               type.loc[:, "Pass_Medium_Att_pPass"], type.loc[:, "Pass_Long_Att_pPass"]] +
                              [type.loc[:, "Pass_Att_pTouch"]] * 5 +
                              [type.loc[:, "Crs_pPass"], type.loc[:, "Pass_Att_pTouch"],
-                              type.loc[:, "Dribbles_Att_pTouch"], type.loc[:, "Tackles_pDefAct"],
+                              type.loc[:, "Take-Ons_Att_pTouch"], type.loc[:, "Tackles_pDefAct"],
                               type.loc[:, "Tackles_pDefAct"], type.loc[:, "Tkl_vsDrib_pDefAct"],
                               type.loc[:, "Blocks_pDefAct"], type.loc[:, "Int_pDefAct"],
-                              type.loc[:, "Clr_pDefAct"], type.loc[:, "Dribbles_Att_pTouch"],
-                              type.loc[:, "Pass_Rec_p90a"], type.loc[:, "Fls_pDefAct"],
+                              type.loc[:, "Clr_pDefAct"]] + type.loc[:, "Take-Ons_Att_pTouch"] * 2 +
+                             [type.loc[:, "Pass_Rec_p90a"], type.loc[:, "Fls_pDefAct"],
                               type.loc[:, "Fld_pTouch"], type.loc[:, "Recov_p90"],
                               type.loc[:, "Aerial Duels_p90"]])
     cent_edit = cent_edit.T
@@ -587,7 +599,7 @@ def get_market_values(df):
     :return: list with market values
     """
     result = []
-    headers = {"User-Agent":"Mozilla/5.0"}
+    headers = {"User-Agent": "Mozilla/5.0"}
     max_count = len(df)
     count = 0
     for index, row in df.iterrows():
@@ -596,8 +608,8 @@ def get_market_values(df):
         value = -1  # default value if no matching player was found
         name = row["Player"]
         age = row["Age"]
-        search_name = name.replace(" ","+")
-        name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore')    # changes accents etc to "normal" letters
+        search_name = name.replace(" ", "+")
+        name = unicodedata.normalize('NFKD', name).encode('ASCII', 'ignore')    # changes accents etc to basic letters
         url = f"https://www.transfermarkt.de/schnellsuche/ergebnis/schnellsuche?query={search_name}"
 
         # scraping of transfermarkt.de 's quick search
@@ -605,32 +617,32 @@ def get_market_values(df):
         player_Soup = bs.BeautifulSoup(player_Site.content, 'html.parser')
         player_Site.close()
 
-        tm_people_list = player_Soup.find_all("table",{"class":"items"})    # found entries
+        tm_people_list = player_Soup.find_all("table", {"class": "items"})    # found entries
         if len(tm_people_list) == 0:
             result.append(-2)   # no entry found
             continue
 
-        tm_player_list =  tm_people_list[0]    # table with found players
+        tm_player_list = tm_people_list[0]    # table with found players
         tm_players = tm_player_list.find_all("tr")  # rows of table (index 0 is table header)
         if tm_players[0].text != "\nName / VereinPositionVereinAlterNat.MarktwertBerater":
             result.append(-3)   # no player found
             continue
 
-        for i in range(1, len(tm_players),3):   # 3 entries for every player, first is whole
-            tm_row = tm_players[i].find_all("td",{"class":["hauptlink","zentriert"]})
+        for i in range(1, len(tm_players), 3):   # 3 entries for every player, first is whole
+            tm_row = tm_players[i].find_all("td", {"class": ["hauptlink", "zentriert"]})
             found_name = tm_row[0].text
-            found_name = unicodedata.normalize('NFKD', found_name).encode('ASCII', 'ignore')    # changes accents etc to "normal" letters
+            found_name = unicodedata.normalize('NFKD', found_name).encode('ASCII', 'ignore')    # changes accents etc to basic letters
             found_age = tm_row[3].text
-            found_age = found_age.replace("-","0")
+            found_age = found_age.replace("-", "0")
             found_age = found_age.replace("k. A.", "0")
             found_value = tm_row[5].text
-            found_value = found_value.replace("-","0.00 Mio. €")
+            found_value = found_value.replace("-", "0.00 Mio. €")
             if (found_name in name or name in found_name) and age == int(found_age):    # looking for players with matching name and age
                 found_value = found_value.split()
                 if found_value[1] == "Mio.":
-                    value = float(found_value[0].replace(",","."))
+                    value = float(found_value[0].replace(",", "."))
                 elif found_value[1] == "Tsd.":
-                    value = round(float(found_value[0].replace(",",""))/1000,3)
+                    value = round(float(found_value[0].replace(",", ""))/1000, 3)
                 break
 
         result.append(value)
@@ -658,7 +670,7 @@ def setup_clusters(end_season, k):
         else:
             continue
     # scrapes new data and edits it
-#    get_setup_data(end_season)
+    get_setup_data(end_season)
     df = pd.read_csv("basic_data.csv")
     df = alter_columns_per_x(df)
 
@@ -680,15 +692,17 @@ def setup_clusters(end_season, k):
     print("setup completed")
 
 
-def setup_current_season(season,market_values = False):
+def setup_current_season(season, market_values=False):
     """
     Setting up player type fitness and quality for every player of current season data.
+    :param season: start year of season to set up (2022 for season 2022/23)
     :param market_values: boolean value whether market values from transfermarkt.de should be included
     :return: none - saves fitness and quality table in file scouting.csv
     """
     print("Loading data.")
     # scrapes new data and edits it
-    df = get_current_season_data(season)
+    get_current_season_data(season)
+    df = pd.read_csv("current_season_data.csv")
     df = alter_columns_per_x(df)
 
     basic_info = df[["Player", "Pos", "Squad", "Comp", "Age", "90s"]]  # player identification data
@@ -720,9 +734,6 @@ def setup_current_season(season,market_values = False):
     min_quality = min(individual_quality)
     individual_quality = ((individual_quality-min_quality)/(max_quality-min_quality))*100
     basic_info["Quality"] = individual_quality
-
-    #for column in quality.columns:
-    #    quality[column] = ((quality[column]-min_quality)/(max_quality-min_quality))*100
     quality = ((quality-min_quality)/(max_quality-min_quality))*100
 
     with open("player_type_names.json", 'rb') as fp:
