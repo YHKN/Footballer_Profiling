@@ -168,11 +168,11 @@ def get_setup_data(end_season):
     print("downloading data")
     number_of_seasons = end_season - 2016
     print(f"0/{number_of_seasons}")
-    df, duration = scrape_season(2017)
+    df = scrape_season(2017)
     df["Season"] = 2017
     print(f"1/{number_of_seasons}")
     for year in range(2018, end_season, 1):
-        time.sleep(30)
+        time.sleep(60)
         new_df = scrape_season(year)
         new_df["Season"] = year  # add season column to identify the season the data belongs to
         df = pd.concat([df, new_df])
@@ -299,11 +299,11 @@ def alter_columns_per_x(df):
     df["TouchesAtt Pen"] = df["TouchesAtt Pen"] / df["Touches"]
     df["Take-OnsAtt"] = df["Take-OnsAtt"] / df["Touches"]
     df["CarriesPrgDist"] = df["CarriesPrgDist"] / df["CarriesTotDist"]
-    df["CarriesTotDist"] = df["CarriesTotDist"] / df["Carries"]
-    df["CarriesPrgC"] = df["CarriesPrgC"] / df["Carries"]
-    df["CarriesDis"] = df["CarriesDis"] / df["Carries"]
-    df["Carries1/3"] = df["Carries1/3"] / df["Carries"]
-    df["CarriesCPA"] = df["CarriesCPA"] / df["Carries"]
+    df["CarriesTotDist"] = df["CarriesTotDist"] / df["CarriesCarries"]
+    df["CarriesPrgC"] = df["CarriesPrgC"] / df["CarriesCarries"]
+    df["CarriesDis"] = df["CarriesDis"] / df["CarriesCarries"]
+    df["Carries1/3"] = df["Carries1/3"] / df["CarriesCarries"]
+    df["CarriesCPA"] = df["CarriesCPA"] / df["CarriesCarries"]
     df["CarriesCarries"] = df["CarriesCarries"] / df["Touches"]
     df["ReceivingPrgR"] = df["ReceivingPrgR"] / df["ReceivingRec"]
     df["ReceivingRec"] = df["ReceivingRec"] / (df["90s"] * df["Team_Poss"])
@@ -496,6 +496,23 @@ def distance_to_centroids(player_df, centroids):
             to_add.append(np.linalg.norm(row - centroids.iloc[i]))
         result.append(to_add)
     return pd.DataFrame(result, columns=range(len(centroids)))
+
+
+def scale_distance(distance):
+    """
+    Scales distance to more intuitive scale of 0-100 with 100 being a perfect fit of a player for a given player type.
+    :param distance: dataframe of euclidean distances of each player to every player type
+    :return: dataframe of values 0-100, describing fitness of each player to every player type
+    """
+    limits = []
+    for column in distance.columns:
+        upper = distance[column].quantile(0.75)
+        lower = distance[column].quantile(0.25)
+        iqr = upper - lower
+        limits.append(upper + (1.5 * iqr))
+    limit = min(limits)
+    distance[distance > limit] = limit
+    return (1-(distance/limit))*100
 
 
 def scale_rows_to_equal_sum(df, scale_to):
@@ -713,13 +730,13 @@ def setup_current_season(season, market_values=False):
     df = standardize_df(df[cols_to_normalize], "standardize_player_type_columns.csv")
 
     df, player_quality_df = splitting_and_weighting(df, weights)
-    player_quality_df.to_csv("player_quality_data.csv", index=False)
+    #player_quality_df.to_csv("player_quality_data.csv", index=False)
 
     player_types = pd.read_csv("centroids.csv")
     print("Calculating Player Fitness.")
     distance = distance_to_centroids(df, player_types)  # calculate player type fitness
-    distance = ((1-(distance/distance.max()))*100)  # edit distance to more intuitive scale of 0-100
-    distance.to_csv("soft_player_types.csv", index=False)
+    distance = scale_distance(distance)  # edit distance to more intuitive scale of 0-100
+    #distance.to_csv("soft_player_types.csv", index=False)
 
     player_types = normalize_centroids(player_types)
     print("Calculating Player Quality")
@@ -729,7 +746,7 @@ def setup_current_season(season, market_values=False):
     df = normalize_centroids(df)
     individual_quality = calc_quality_for_player(df, player_quality_df)
 
-    # edits quality to scale 0-100
+    # edit quality to scale 0-100
     max_quality = max(individual_quality)
     min_quality = min(individual_quality)
     individual_quality = ((individual_quality-min_quality)/(max_quality-min_quality))*100
