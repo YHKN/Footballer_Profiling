@@ -774,7 +774,7 @@ def setup_current_season(season, market_values=False):
     print("Setup Completed.")
 
 
-def scout_player_type(player_type, age_min=0, age_max=99, value_max=10000.0, count=6):
+def scout_player_type(player_type, age_min=0, age_max=99, value_max=10000.0, count=5):
     """
     Scouts players for fitness of specified player type .
     :param player_type: player type to be scouted
