@@ -544,12 +544,11 @@ def calc_quality_for_type(centroids, df):
                               centroids.loc[:, "Take-Ons_Att_pTouch"], centroids.loc[:, "Tackles_pDefAct"],
                               centroids.loc[:, "Tackles_pDefAct"], centroids.loc[:, "Tkl_vsDrib_pDefAct"],
                               centroids.loc[:, "Blocks_pDefAct"], centroids.loc[:, "Int_pDefAct"],
-                              centroids.loc[:, "Clr_pDefAct"]] + centroids.loc[:, "Take-Ons_Att_pTouch"] * 2 +
+                              centroids.loc[:, "Clr_pDefAct"]] + [centroids.loc[:, "Take-Ons_Att_pTouch"]] * 2 +
                              [centroids.loc[:, "Pass_Rec_p90a"], centroids.loc[:, "Fls_pDefAct"],
                               centroids.loc[:, "Fld_pTouch"], centroids.loc[:, "Recov_p90"],
                               centroids.loc[:, "Aerial Duels_p90"]])
     cent_edit = cent_edit.T
-    cent_edit.to_csv("edited_centroids.csv", index=False)
 
     scale_rows_to_equal_sum(cent_edit, 10)  # scale rows to avoid advantages for certain player types
     # for every player
@@ -579,7 +578,7 @@ def calc_quality_for_player(type, df):
                               type.loc[:, "Take-Ons_Att_pTouch"], type.loc[:, "Tackles_pDefAct"],
                               type.loc[:, "Tackles_pDefAct"], type.loc[:, "Tkl_vsDrib_pDefAct"],
                               type.loc[:, "Blocks_pDefAct"], type.loc[:, "Int_pDefAct"],
-                              type.loc[:, "Clr_pDefAct"]] + type.loc[:, "Take-Ons_Att_pTouch"] * 2 +
+                              type.loc[:, "Clr_pDefAct"]] + [type.loc[:, "Take-Ons_Att_pTouch"]] * 2 +
                              [type.loc[:, "Pass_Rec_p90a"], type.loc[:, "Fls_pDefAct"],
                               type.loc[:, "Fld_pTouch"], type.loc[:, "Recov_p90"],
                               type.loc[:, "Aerial Duels_p90"]])
@@ -730,13 +729,11 @@ def setup_current_season(season, market_values=False):
     df = standardize_df(df[cols_to_normalize], "standardize_player_type_columns.csv")
 
     df, player_quality_df = splitting_and_weighting(df, weights)
-    #player_quality_df.to_csv("player_quality_data.csv", index=False)
 
     player_types = pd.read_csv("centroids.csv")
     print("Calculating Player Fitness.")
     distance = distance_to_centroids(df, player_types)  # calculate player type fitness
     distance = scale_distance(distance)  # edit distance to more intuitive scale of 0-100
-    #distance.to_csv("soft_player_types.csv", index=False)
 
     player_types = normalize_centroids(player_types)
     print("Calculating Player Quality")
@@ -785,7 +782,7 @@ def scout_player_type(player_type, age_min=0, age_max=99, value_max=10000.0, cou
     :return: top players for chosen player type and set filters
     """
     data = pd.read_csv("scouting.csv")
-    data = data.loc[(data[f"Fit_{player_type}"] < 3) & (data["Age"] >= age_min) & (data["Age"] <= age_max)
+    data = data.loc[(data[f"Fit_{player_type}"] > 70) & (data["Age"] >= age_min) & (data["Age"] <= age_max)
                     & (data["Value"] <= value_max)]
     if len(data) < 1:
         print("no players found")
