@@ -165,7 +165,7 @@ def get_setup_data(end_season):
     :param end_season: year final season to be scraped ends (2022 for final season 2021/22)
     :return: none - saves dataframe to file basic_data.csv
     """
-    print("downloading data")
+    print("Downloading data.")
     number_of_seasons = end_season - 2016
     print(f"0/{number_of_seasons}")
     df = scrape_season(2017)
@@ -178,7 +178,7 @@ def get_setup_data(end_season):
         df = pd.concat([df, new_df])
         print(f"{year - 2016}/{number_of_seasons}")
     df.to_csv("basic_data.csv", index=False)
-    print("download successful")
+    print("Download successful.")
 
 
 def get_current_season_data(season):
@@ -187,10 +187,10 @@ def get_current_season_data(season):
     :param season: start year of season to be scraped (2022 for 2022/23)
     :return: none - saves dataframe in file current_season_data.csv
     """
-    print("downloading data")
+    print("Downloading data.")
     df = scrape_season(season)
     df.to_csv("current_season_data.csv", index=False)
-    print("download successful")
+    print("Download successful.")
 
 
 def alter_columns_per_x(df):
@@ -618,9 +618,11 @@ def get_market_values(df):
     headers = {"User-Agent": "Mozilla/5.0"}
     max_count = len(df)
     count = 0
+    print(f"Player {count}/{max_count}")
     for index, row in df.iterrows():
         count += 1
-        print(f"Player {count}/{max_count}")
+        if count % 100 or count == max_count:
+            print(f"Player {count}/{max_count}")
         value = -1  # default value if no matching player was found
         name = row["Player"]
         age = row["Age"]
@@ -687,6 +689,7 @@ def setup_clusters(end_season, k):
             continue
     # scrapes new data and edits it
     get_setup_data(end_season)
+    print("Loading data.")
     df = pd.read_csv("basic_data.csv")
     df = alter_columns_per_x(df)
 
@@ -715,9 +718,9 @@ def setup_current_season(season, market_values=False):
     :param market_values: boolean value whether market values from transfermarkt.de should be included
     :return: none - saves fitness and quality table in file scouting.csv
     """
-    print("Loading data.")
     # scrapes new data and edits it
     get_current_season_data(season)
+    print("Loading data.")
     df = pd.read_csv("current_season_data.csv")
     df = alter_columns_per_x(df)
 
@@ -736,7 +739,7 @@ def setup_current_season(season, market_values=False):
     distance = scale_distance(distance)  # edit distance to more intuitive scale of 0-100
 
     player_types = normalize_centroids(player_types)
-    print("Calculating Player Quality")
+    print("Calculating Player Quality.")
     quality = calc_quality_for_type(player_types, player_quality_df)  # calculate player type quality
 
     # calculates player quality for his playing style
@@ -771,9 +774,20 @@ def setup_current_season(season, market_values=False):
     print("Setup Completed.")
 
 
-def scout_player_type(player_type, age_min=0, age_max=99, value_max=10000.0, count=5):
+def list_player_types():
     """
-    Scouts players for fitness of specified player type .
+    Lists player types and abbreviations to use to scout for them.
+    :return: none - prints player types and keys
+    """
+    with open("player_type_names.json", 'rb') as fp:
+        type_names = json.load(fp)
+    for key in type_names.keys():
+        print(f"To scout for a {type_names[key]} use {key}.")
+
+
+def scout(player_type, age_min=0, age_max=99, value_max=10000.0, count=5):
+    """
+    Scouts players for fitness of specified player type.
     :param player_type: player type to be scouted
     :param age_min: lower age limit (default: 0)
     :param age_max: upper age limit (default: 99)
@@ -781,11 +795,15 @@ def scout_player_type(player_type, age_min=0, age_max=99, value_max=10000.0, cou
     :param count: number of players to be shown (default: 5)
     :return: top players for chosen player type and set filters
     """
+    with open("player_type_names.json", 'rb') as fp:
+        type_names = json.load(fp)
+    if player_type not in list(type_names.keys()):
+        print("Invalid player type. Run method list_player_types() for a list of player types.")
     data = pd.read_csv("scouting.csv")
     data = data.loc[(data[f"Fit_{player_type}"] > 70) & (data["Age"] >= age_min) & (data["Age"] <= age_max)
                     & (data["Value"] <= value_max)]
     if len(data) < 1:
-        print("no players found")
+        print("No players found!")
         return
     data = data[["Player", "Pos", "Squad", "Age", f"Fit_{player_type}", f"Qual_{player_type}", "Value"]]
     data.rename(columns={f"Fit_{player_type}": "Fitness", f"Qual_{player_type}": "Quality"}, inplace=True)
