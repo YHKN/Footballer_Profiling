@@ -785,10 +785,11 @@ def list_player_types():
         print(f"To scout for a {type_names[key]} use {key}.")
 
 
-def scout(player_type, age_min=0, age_max=99, value_max=10000.0, count=5):
+def scout(player_type, fit_limit=70, age_min=0, age_max=99, value_max=10000.0, count=5):
     """
     Scouts players for fitness of specified player type.
     :param player_type: player type to be scouted
+    :param fit_limit: minimum player type fitness level (default: 70)
     :param age_min: lower age limit (default: 0)
     :param age_max: upper age limit (default: 99)
     :param value_max: upper value limit in million euros (default: 10000)
@@ -800,7 +801,7 @@ def scout(player_type, age_min=0, age_max=99, value_max=10000.0, count=5):
     if player_type not in list(type_names.keys()):
         print("Invalid player type. Run method list_player_types() for a list of player types.")
     data = pd.read_csv("scouting.csv")
-    data = data.loc[(data[f"Fit_{player_type}"] > 70) & (data["Age"] >= age_min) & (data["Age"] <= age_max)
+    data = data.loc[(data[f"Fit_{player_type}"] >= fit_limit) & (data["Age"] >= age_min) & (data["Age"] <= age_max)
                     & (data["Value"] <= value_max)]
     if len(data) < 1:
         print("No players found!")
